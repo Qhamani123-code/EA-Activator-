@@ -1,0 +1,105 @@
+from flask import Flask, request, jsonify
+import os
+
+app = Flask(__name__)
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    # Save the uploaded file
+    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+    file.save(file_path)
+    
+    # Here, you'd implement your conversion/activation logic
+    converted_file_path = process_file(file_path)
+    
+    return jsonify({"message": "File uploaded and processed successfully", "file": converted_file_path}), 200
+
+def process_file(file_path):
+    # Placeholder for processing logic
+    # For example, converting MQ4 to an executable
+    converted_path = file_path.replace('.mq4', '.ex4')
+    os.rename(file_path, converted_path)
+    return converted_path
+
+if __name__ == '__main__':
+    app.run(debug=True)
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: FileUploadScreen(),
+    );
+  }
+}
+
+class FileUploadScreen extends StatefulWidget {
+  @override
+  _FileUploadScreenState createState() => _FileUploadScreenState();
+}
+
+class _FileUploadScreenState extends State<FileUploadScreen> {
+  String _status = "No file uploaded";
+
+  Future<void> _uploadFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+    if (result != null) {
+      File file = File(result.files.single.path!);
+      String fileName = file.path.split('/').last;
+
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('http://your-backend-url/upload'),
+      );
+      request.files.add(await http.MultipartFile.fromPath('file', file.path));
+
+      var response = await request.send();
+      if (response.statusCode == 200) {
+        setState(() {
+          _status = "File uploaded successfully: $fileName";
+        });
+      } else {
+        setState(() {
+          _status = "File upload failed.";
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('EA Converter App')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_status),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _uploadFile,
+              child: Text('Upload File'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
